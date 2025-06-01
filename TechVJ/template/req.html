@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{file_name}} | Tech VJ</title>
+</head>
+<body>
+    <header>
+        <nav>
+            <button type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasWithBothOptions" aria-controls="offcanvasWithBothOptions">Menu</button>
+            <div id="offcanvasWithBothOptions" tabindex="-1" aria-labelledby="offcanvasWithBothOptionsLabel">
+                <div>
+                    <button type="button" data-bs-dismiss="offcanvas" aria-label="连Close">Close</button>
+                    <img src="https://i.ibb.co/qJyZWCv/20230629-081948-0000.png" alt="">
+                    <h4 id="offcanvasWithBothOptionsLabel">TECH VJ</h4>
+                    <p>The One & Only</p>
+                    <a href="https://github.com/VJBots" target="_blank">Follow TECH VJ</a>
+                    <div>
+                        <a href="https://teleram.me/KingVJ01" target="_blank">Updates</a>
+                        <a href="https://telegram.me/vj_botz" target="_blank">Fork repo</a>
+                        <a href="https://youtube.com/@Tech_VJ" target="_blank">Subscribe</a>
+                    </div>
+                </div>
+                <div>
+                    <h2>Explore</h2>
+                    <div>
+                        <a href="https://t.me/vj_bots">Trending Movies</a>
+                        <a href="https://t.me/vj_bots">Newly Released Movies</a>
+                        <a href="https://t.me/vj_bots">Popular on MoviesAdda</a>
+                        <a href="https://t.me/vj_bots">Bollywood Movies</a>
+                        <a href="https://t.me/vj_bots">Hollwood Movies</a>
+                        <a href="https://t.me/vj_bots">webseries</a>
+                    </div>
+                    <p>
+                        <a data-bs-toggle="collapse" href="" role="button" aria-expanded="false" aria-controls="multiCollapseExample1">watch Deploy tutorial</a>
+                    </p>
+                    <div>
+                        <h5>With Love</h5>
+                        <div>
+                            <span>©</span>
+                            <span>Tech VJ</span>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <a href="https://t.me/vj_bots">For Movies</a>
+                </div>
+            </nav>
+        </header>
+        <div>
+            <div id="file-name">
+                <p>
+                    <span id="myDiv">{{file_name}}</span>
+                </p>
+            </div>
+            <div>
+                <video id="player" controls>
+                    <source src="{{file_url}}" type="video/mp4">
+                </video>
+            </div>
+            <div>
+                <div>
+                    <p>Play with...</p>
+                </div>
+                <div>
+                    <div onclick="vlc_player()">VLC Player</div>
+                    <div onclick="mx_player()">Mx Player</div>
+                    <div onclick="playit_player()">Play-it</div>
+                    <div onclick="km_player()">km Player</div>
+                    <div onclick="s_player()">S Player</div>
+                    <div onclick="hd_player()">HD Player(4K)</div>
+                    <div onclick="lazyDownload()">Download Now</div>
+                </div>
+            </div>
+            <div>
+                <div>
+                    <div>Video not playing? Possibly because your browser or the player doesn't support codec, please download and watch.</div>
+                </div>
+            </div>
+            <div>
+                <div>
+                    <div>If you find any broken links then please contact <a href="https://telegram.me/kingvj01">Tech VJ</a></div>
+                </div>
+            </div>
+        </div>
+        <footer>
+            <div>
+                <a href="https://youtube.com/@Tech_VJ" target="_blank">YouTube</a>
+                <a href="https://telegram.me/kingvj01" target="_blank">Telegram</a>
+                <a href="https://instagram.com/tech.vj" target="_blank">Instagram</a>
+                <a href="https://telegram.me/kingvj01" target="_blank">Admin</a>
+                <a href="https://github.com/VJBots" target="_blank">Github</a>
+            </div>
+            <div>
+                <div>
+                    <h5>Think & just code it... <sup>-Tech VJ</sup></h5>
+                </div>
+                <div>
+                    <h5>Success is the journey of millions of failure and lots of hard work <sup>-Tech VJ</sup></h5>
+                </div>
+                <div>
+                    <img src="https://i.ibb.co/qJyZWCv/20230629-081948-0000.png" alt="logo">
+                </div>
+            </div>
+            <div>
+                <h5>©
+                    <script type="text/JavaScript">
+                        var theDate=new Date()
+                        document.write(theDate.getFullYear())
+                    </script> Copyright:
+                    <a href="https://telegram.me/vj_botz">Tech VJ</a> All right reserved
+                </h5>
+            </div>
+        </footer>
+        <script>
+            var div = document.getElementById('myDiv');
+            var text = div.textContent;
+            if(text.length > 60){
+                div.textContent = text.slice(0, 60)+"....";
+            }
+        </script>
+        <script>
+            document.addEventListener("contextmenu", function (e) {
+                e.preventDefault();
+            });
+            document.addEventListener('keydown', function (e) {
+                if (
+                    e.key === 'F12' ||
+                    (e.ctrlKey && e.shiftKey && e.key === 'I') ||
+                    (e.ctrlKey && e.key === 'u') ||
+                    e.ctrlKey ||
+                    e.shiftKey ||
+                    e.altKey
+                ) {
+                    e.preventDefault();
+                }
+            });
+        </script>
+        <script>
+            const videolink = window.location.href;
+            const lazyLink = videolink.replace("/watch/", "/");
+            function vlc_player() {
+                const openLazyLink = lazyLink;
+                const openVlc = `vlc://${openLazyLink}`;
+                window.location.href = openVlc;
+            }
+            function mx_player() {
+                const openLazyLink = lazyLink;
+                const openMx = `intent:${openLazyLink}#Intent;package=com.mxtech.videoplayer.ad;end`;
+                window.location.href = openMx;
+            }
+            function playit_player() {
+                const openLazyLink = lazyLink;
+                const openPlayit = `playit://playerv2/video?url=${openLazyLink}`;
+                window.location.href = openPlayit;
+            }
+            function s_player() {
+                const openLazyLink = lazyLink;
+                const openSplayer = `intent:${openLazyLink}#Intent;action=com.young.simple.player.playback_online;package=com.young.simple.player;end`;
+                window.location.href = openSplayer;
+            }
+            function km_player() {
+                const openLazyLink = lazyLink;
+                const openKmplayer = `intent:${openLazyLink}#Intent;package=com.kmplayer;end`;
+                window.location.href = openKmplayer;
+            }
+            function hd_player() {
+                const openLazyLink = lazyLink;
+                const openHDplayer = `intent:${openLazyLink}#Intent;package=uplayer.video.player;end`;
+                window.location.href = openHDplayer;
+            }
+            function lazyDownload() {
+                const openLazyLink = lazyLink;
+                window.location.href = openLazyLink;
+            }
+        </script>
+    </body>
+</html>
