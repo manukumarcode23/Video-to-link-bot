@@ -18,8 +18,9 @@ from aiohttp.http_exceptions import BadStatusLine
 from pyrogram import Client, filters, enums
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from urllib.parse import quote_plus
-from info import *
-from utils import temp, get_shortlink, ByteStreamer, humanbytes, get_hash, get_name, get_media_file_size, InvalidHash, FIleNotFound
+from info import DATABASE_URI, DATABASE_NAME, LOG_CHANNEL, URL, SHORTLINK
+from config import temp, InvalidHash, FIleNotFound
+from utils import get_shortlink, ByteStreamer, humanbytes, get_hash, get_name, get_media_file_size, render_page
 from bot import TechVJBot, multi_clients, work_loads
 
 # Script constants
@@ -99,7 +100,7 @@ async def stream_handler(request: web.Request):
         else:
             id = int(re.search(r"(\d+)(?:\/\S+)?", path).group(1))
             secure_hash = request.rel_url.query.get("hash")
-        return web.Response(text=await render_page(id, secure_hash), content_type='text/html')
+        return web.Response(text=await render_page(TechVJBot, id, secure_hash), content_type='text/html')
     except InvalidHash as e:
         raise web.HTTPForbidden(text=e.message)
     except FIleNotFound as e:
