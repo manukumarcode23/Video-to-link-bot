@@ -15,22 +15,8 @@ from pyrogram.file_id import FileId, FileType, ThumbnailSource
 from pyrogram.types import Message
 from pyrogram.errors import AuthBytesInvalid
 from pyrogram.session import Session, Auth
-from info import *
-from plugins import TechVJBot, LOG_CHANNEL
-
-# Temporary storage
-class temp(object):
-    ME = None
-    BOT = None
-    U_NAME = None
-    B_NAME = None
-
-# Exceptions
-class InvalidHash(Exception):
-    message = "Invalid hash"
-
-class FIleNotFound(Exception):
-    message = "File not found"
+from info import SHORTLINK_API, SHORTLINK_URL, LOG_CHANNEL
+from config import InvalidHash, FIleNotFound
 
 # Shortlink utility
 async def get_shortlink(link):
@@ -146,9 +132,9 @@ async def ping_server():
             traceback.print_exc()
 
 # Template rendering
-async def render_page(id, secure_hash, src=None):
-    file = await TechVJBot.get_messages(int(LOG_CHANNEL), int(id))
-    file_data = await get_file_ids(TechVJBot, int(LOG_CHANNEL), int(id))
+async def render_page(client: Client, id, secure_hash, src=None):
+    file = await client.get_messages(int(LOG_CHANNEL), int(id))
+    file_data = await get_file_ids(client, int(LOG_CHANNEL), int(id))
     if file_data.unique_id[:6] != secure_hash:
         logging.debug(f"link hash: {secure_hash} - {file_data.unique_id[:6]}")
         logging.debug(f"Invalid hash for message with - ID {id}")
