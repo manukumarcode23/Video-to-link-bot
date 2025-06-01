@@ -15,7 +15,8 @@ from aiohttp import web
 from datetime import date, datetime
 from typing import Union, Optional, AsyncGenerator, Dict
 from info import *
-from utils import temp, ping_server
+from config import temp
+from utils import ping_server
 from plugins import web_server, script
 
 # Logging configuration
