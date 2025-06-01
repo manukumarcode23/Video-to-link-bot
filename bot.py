@@ -13,7 +13,7 @@ from pathlib import Path
 from pyrogram import Client, idle
 from aiohttp import web
 from datetime import date, datetime
-from typing import Union, Optional, AsyncGenerator
+from typing import Union, Optional, AsyncGenerator, Dict
 from info import *
 from utils import temp, ping_server
 from plugins import web_server, script
@@ -48,9 +48,7 @@ class TechVJBot(Client):
 
     async def iter_messages(
         self,
-        chat_id: Union
-
-System: [int, str],
+        chat_id: Union[int, str],
         limit: int,
         offset: int = 0,
     ) -> Optional[AsyncGenerator["types.Message", None]]:
@@ -124,7 +122,6 @@ class TokenParser:
 
 # Main bot logic
 TechVJBot = TechVJBot()
-TechVJBot.start()
 loop = asyncio.get_event_loop()
 
 async def start():
