@@ -1,166 +1,162 @@
-# Don't Remove Credit @VJ_Botz
-# Subscribe YouTube Channel For Amazing Bot @Tech_VJ
-# Ask Doubt on telegram @KingVJ01
-
-import sys
-import glob
-import importlib
+import os
+import json
+import hashlib
 import logging
-import logging.config
-import pytz
-import asyncio
-from pathlib import Path
-from pyrogram import Client, idle
+from pyrogram import Client, filters
+from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiohttp import web
-from datetime import date, datetime
-from typing import Union, Optional, AsyncGenerator, Dict
-from info import *
-from config import temp
-from utils import ping_server
-from plugins import web_server, script
+from aiohttp.web_request import Request
+from aiohttp.web_response import Response
+import aiohttp_jinja2
+import jinja2
+from datetime import datetime
 
-# Logging configuration
-logging.config.fileConfig('logging.conf')
-logging.getLogger().setLevel(logging.INFO)
-logging.getLogger("pyrogram").setLevel(logging.ERROR)
-logging.getLogger("imdbpy").setLevel(logging.ERROR)
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-logging.getLogger("aiohttp").setLevel(logging.ERROR)
-logging.getLogger("aiohttp.web").setLevel(logging.ERROR)
+# Environment variables
+API_ID = os.getenv("API_ID")
+API_HASH = os.getenv("API_HASH")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+LOG_CHANNEL = int(os.getenv("LOG_CHANNEL"))
+BASE_URL = os.getenv("BASE_URL", "https://yourdomain.com")
+PORT = int(os.getenv("PORT", 8080))
 
-# Bot class
-class TechVJBot(Client):
-    def __init__(self):
-        super().__init__(
-            name=SESSION,
-            api_id=API_ID,
-            api_hash=API_HASH,
-            bot_token=BOT_TOKEN,
-            workers=50,
-            plugins={"root": "plugins"},
-            sleep_threshold=5,
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Initialize Pyrogram client
+app = Client("video_stream_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
+
+# JSON file for user storage
+USERS_FILE = "users.json"
+
+def load_users():
+    if os.path.exists(USERS_FILE):
+        with open(USERS_FILE, "r") as f:
+            return json.load(f)
+    return []
+
+def save_user(user_id, first_name):
+    users = load_users()
+    if not any(user["id"] == user_id for user in users):
+        users.append({"id": user_id, "name": first_name})
+        with open(USERS_FILE, "w") as f:
+            json.dump(users, f, indent=2)
+        return True
+    return False
+
+def get_hash(message_id, filename):
+    return hashlib.md5(f"{message_id}{filename}{BOT_TOKEN}".encode()).hexdigest()
+
+async def send_to_log_channel(client, message, user_id, first_name=None):
+    if first_name:
+        # Log new user
+        await client.send_message(
+            LOG_CHANNEL,
+            f"New user: {first_name} (ID: {user_id}) joined at {datetime.now()}"
         )
-
-    async def set_self(self):
-        temp.BOT = self
-
-    async def iter_messages(
-        self,
-        chat_id: Union[int, str],
-        limit: int,
-        offset: int = 0,
-    ) -> Optional[AsyncGenerator["types.Message", None]]:
-        current = offset
-        while True:
-            new_diff = min(200, limit - current)
-            if new_diff <= 0:
-                return
-            messages = await self.get_messages(chat_id, list(range(current, current + new_diff + 1)))
-            for message in messages:
-                yield message
-                current += 1
-
-# Client management
-multi_clients = {}
-work_loads = {}
-
-async def initialize_clients():
-    global MULTI_CLIENT
-    multi_clients[0] = TechVJBot
-    work_loads[0] = 0
-    all_tokens = TokenParser().parse_from_env()
-    if not all_tokens:
-        print("No additional clients found, using default client")
-        return
-
-    async def start_client(client_id, token):
-        try:
-            print(f"Starting - Client {client_id}")
-            if client_id == len(all_tokens):
-                await asyncio.sleep(2)
-                print("This will take some time, please wait...")
-            client = await Client(
-                name=str(client_id),
-                api_id=API_ID,
-                api_hash=API_HASH,
-                bot_token=token,
-                sleep_threshold=SLEEP_THRESHOLD,
-                no_updates=True,
-                in_memory=True
-            ).start()
-            work_loads[client_id] = 0
-            return client_id, client
-        except Exception:
-            logging.error(f"Failed starting Client - {client_id} Error:", exc_info=True)
-
-    clients = await asyncio.gather(*[start_client(i, token) for i, token in all_tokens.items()])
-    multi_clients.update(dict(clients))
-    if len(multi_clients) != 1:
-        MULTI_CLIENT = True
-        print("Multi-Client Mode Enabled")
     else:
-        print("No additional clients were initialized, using default client")
+        # Forward video to log channel
+        return await message.forward(LOG_CHANNEL)
 
-# Token parser
-class TokenParser:
-    def __init__(self, config_file: Optional[str] = None):
-        self.tokens = {}
-        self.config_file = config_file
+# /start command handler
+@app.on_message(filters.command("start") & filters.private)
+async def start_command(client, message):
+    user_id = message.from_user.id
+    first_name = message.from_user.first_name
+    if save_user(user_id, first_name):
+        await send_to_log_channel(client, message, user_id, first_name)
+    await message.reply(
+        f"Hello {first_name}! 👋 Send me a video, and I'll give you a streaming link."
+    )
 
-    def parse_from_env(self) -> Dict[int, str]:
-        self.tokens = dict(
-            (c + 1, t)
-            for c, (_, t) in enumerate(
-                filter(
-                    lambda n: n[0].startswith("MULTI_TOKEN"), sorted(environ.items())
-                )
-            )
+# Video/Document handler
+@app.on_message(filters.video | filters.document & filters.private)
+async def handle_video(client, message):
+    user_id = message.from_user.id
+    file_name = message.video.file_name if message.video else message.document.file_name
+    if not file_name:
+        file_name = f"video_{message.id}.mp4"
+
+    # Forward to log channel
+    forwarded = await send_to_log_channel(client, message, user_id)
+    message_id = forwarded.id
+    hash_value = get_hash(message_id, file_name)
+    stream_url = f"{BASE_URL}/watch/{message_id}/{file_name}?hash={hash_value}"
+
+    # Reply with streaming link
+    await message.reply(
+        f"🎥 **{file_name}**\n\nStream your video:",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🖥️ Watch Online", url=stream_url)]
+        ])
+    )
+
+# ByteStreamer class for streaming
+class ByteStreamer:
+    def __init__(self, client: Client):
+        self.client = client
+
+    async def get_file_properties(self, message_id):
+        message = await self.client.get_messages(LOG_CHANNEL, message_id)
+        if message.video:
+            return message.video.file_id, message.video.file_size
+        elif message.document:
+            return message.document.file_id, message.document.file_size
+        return None, None
+
+    async def stream(self, message_id: int, _: str):
+        file_id, file_size = await self.get_file_properties(message_id)
+        if not file_id:
+            return Response(status=404, text="File not found")
+
+        headers = {
+            "Content-Type": "video/mp4",
+            "Content-Length": str(file_size),
+            "Accept-Ranges": "bytes",
+        }
+        return Response(
+            body=await self.client.stream_media(file_id),
+            status=200,
+            headers=headers
         )
-        return self.tokens
 
-# Main bot logic
-TechVJBot = TechVJBot()
-loop = asyncio.get_event_loop()
+# Web server routes
+async def watch_handler(request: Request):
+    message_id = request.match_info["msg_id"]
+    filename = request.match_info["filename"]
+    hash_value = request.query.get("hash")
+    expected_hash = get_hash(message_id, filename)
+    if hash_value != expected_hash:
+        return web.Response(status=403, text="Invalid hash")
+    context = {"stream_url": f"/{message_id}/{filename}"}
+    return aiohttp_jinja2.render_template("dl.html", request, context)
 
-async def start():
-    print('\n')
-    print('Initializing Your Bot')
-    bot_info = await TechVJBot.get_me()
-    await initialize_clients()
-    for name in glob.glob("plugins/*.py"):
-        with open(name) as a:
-            patt = Path(a.name)
-            plugin_name = patt.stem.replace(".py", "")
-            plugins_dir = Path(f"plugins/{plugin_name}.py")
-            import_path = "plugins.{}".format(plugin_name)
-            spec = importlib.util.spec_from_file_location(import_path, plugins_dir)
-            load = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(load)
-            sys.modules["plugins." + plugin_name] = load
-            print("Tech VJ Imported => " + plugin_name)
-    if ON_HEROKU:
-        asyncio.create_task(ping_server())
-    me = await TechVJBot.get_me()
-    temp.BOT = TechVJBot
-    temp.ME = me.id
-    temp.U_NAME = me.username
-    temp.B_NAME = me.first_name
-    tz = pytz.timezone('Asia/Kolkata')
-    today = date.today()
-    now = datetime.now(tz)
-    time = now.strftime("%H:%M:%S %p")
-    await TechVJBot.send_message(chat_id=LOG_CHANNEL, text=script.RESTART_TXT.format(today, time))
-    app = web.AppRunner(await web_server())
-    await app.setup()
-    bind_address = "0.0.0.0"
-    await web.TCPSite(app, bind_address, PORT).start()
-    await idle()
+async def stream_handler(request: Request):
+    message_id = request.match_info["msg_id"]
+    filename = request.match_info["filename"]
+    streamer = ByteStreamer(app)
+    return await streamer.stream(int(message_id), filename)
 
-if __name__ == '__main__':
-    try:
-        loop.run_until_complete(start())
-    except KeyboardInterrupt:
-        logging.info('Service Stopped Bye 👋')
+# Setup web app
+web_app = web.Application()
+aiohttp_jinja2.setup(web_app, loader=jinja2.FileSystemLoader("."))
+web_app.router.add_get("/watch/{msg_id}/{filename}", watch_handler)
+web_app.router.add_get("/{msg_id}/{filename}", stream_handler)
+
+# Run bot and web server
+if __name__ == "__main__":
+    import asyncio
+    async def main():
+        await app.start()
+        runner = web.AppRunner(web_app)
+        await runner.setup()
+        site = web.TCPSite(runner, "0.0.0.0", PORT)
+        await site.start()
+        logger.info(f"Web server running on port {PORT}")
+        try:
+            await asyncio.Event().wait()
+        finally:
+            await runner.cleanup()
+            await app.stop()
+
+    asyncio.run(main())
