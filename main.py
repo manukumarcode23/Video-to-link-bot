@@ -12,10 +12,10 @@ import jinja2
 from datetime import datetime
 
 # Environment variables
-API_ID = 7475468
-API_HASH = "58gyr7e85h77"
-BOT_TOKEN = "8385442:8387ht73465"
-LOG_CHANNEL = -10072855235
+API_ID = 25929889
+API_HASH = "fd980dbd069e0b45d0dec91f7e616bad"
+BOT_TOKEN = "8033229577:AAF1Na91KyyvngJNAgpeLhlR-dAazYpWYrs"
+LOG_CHANNEL = -1002619435151
 BASE_URL = os.getenv("BASE_URL", "https://yourdomain.com")
 PORT = int(os.getenv("PORT", 8080))
 
