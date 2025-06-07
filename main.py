@@ -12,10 +12,10 @@ import jinja2
 from datetime import datetime
 
 # Environment variables
-API_ID = os.getenv("API_ID")
-API_HASH = os.getenv("API_HASH")
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-LOG_CHANNEL = int(os.getenv("LOG_CHANNEL"))
+API_ID = 7475468
+API_HASH = "58gyr7e85h77"
+BOT_TOKEN = "8385442:8387ht73465"
+LOG_CHANNEL = -10072855235
 BASE_URL = os.getenv("BASE_URL", "https://yourdomain.com")
 PORT = int(os.getenv("PORT", 8080))
 
@@ -136,12 +136,6 @@ async def stream_handler(request: Request):
     filename = request.match_info["filename"]
     streamer = ByteStreamer(app)
     return await streamer.stream(int(message_id), filename)
-
-# Setup web app
-web_app = web.Application()
-aiohttp_jinja2.setup(web_app, loader=jinja2.FileSystemLoader("."))
-web_app.router.add_get("/watch/{msg_id}/{filename}", watch_handler)
-web_app.router.add_get("/{msg_id}/{filename}", stream_handler)
 
 # Run bot and web server
 if __name__ == "__main__":
