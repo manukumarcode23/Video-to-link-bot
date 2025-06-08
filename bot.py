@@ -1,0 +1,147 @@
+import os
+import hashlib
+import asyncio
+from pyrogram import Client, filters
+from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, Message
+from motor.motor_asyncio import AsyncIOMotorClient
+from aiohttp import web
+import logging
+from dotenv import load_dotenv
+
+# Load environment variables (for local testing, Koyeb uses its own env vars)
+load_dotenv()
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Environment variables (HARDCODED FOR IMMEDIATE DEPLOYMENT - NOT RECOMMENDED FOR PRODUCTION)
+# Please configure these as environment variables in Koyeb for better security.
+API_ID = 24385604
+API_HASH = "29acdafd1a365dddeffe8a53fb19db3f"
+BOT_TOKEN = "8173450714:AAFwzph38DqMpkYUaUu-xkr3UF9bZawvxEY"
+LOG_CHANNEL = -1002323311540
+BASE_URL = "https://ammu-manu-app.koyeb.app"
+MONGO_URI = "mongodb+srv://ammumanu:ammumanu@ammumanu.qnr5e.mongodb.net/?retryWrites=true&w=majority&appName=ammumanu"
+SECRET_KEY = "ammumanu"
+
+# MongoDB setup
+mongo_client = AsyncIOMotorClient(MONGO_URI)
+db = mongo_client.telegram_bot
+users_collection = db.users
+
+# Pyrogram client
+app = Client("telegram_video_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
+
+def generate_secure_hash(message_id: int, file_name: str) -> str:
+    """Generate a secure hash for stream authentication"""
+    data = f"{message_id}:{file_name}:{SECRET_KEY}"
+    return hashlib.sha256(data.encode()).hexdigest()[:16]
+
+@app.on_message(filters.command("start"))
+async def start_command(client: Client, message: Message):
+    """Handle /start command"""
+    user_id = message.from_user.id
+    first_name = message.from_user.first_name or "User"
+    
+    # Check if user already exists
+    existing_user = await users_collection.find_one({"user_id": user_id})
+    
+    if not existing_user:
+        # Save new user to MongoDB
+        user_data = {
+            "user_id": user_id,
+            "first_name": first_name
+        }
+        await users_collection.insert_one(user_data)
+        
+        # Log new user to LOG_CHANNEL if configured
+        if LOG_CHANNEL:
+            try:
+                await client.send_message(
+                    LOG_CHANNEL,
+                    f"🆕 New User Joined!\n\n"
+                    f"👤 Name: {first_name}\n"
+                    f"🆔 ID: {user_id}"
+                )
+            except Exception as e:
+                logger.error(f"Failed to log new user to channel: {e}")
+        else:
+            logger.warning("LOG_CHANNEL is not configured, skipping new user logging.")
+    
+    # Send greeting message
+    await message.reply_text(
+        f"👋 Hello {first_name}!\n\n"
+        f"Welcome to the Video Streaming Bot! 🎬\n\n"
+        f"📤 Send me a video file and I\\'ll create a streaming link for you!"
+    )
+
+@app.on_message(filters.video | filters.document)
+async def handle_video_upload(client: Client, message: Message):
+    """Handle video/document uploads"""
+    try:
+        # Get file info
+        if message.video:
+            file_obj = message.video
+            file_name = file_obj.file_name or f"video_{message.id}.mp4"
+        elif message.document:
+            file_obj = message.document
+            file_name = file_obj.file_name or f"document_{message.id}"
+        else:
+            return
+        
+        # Forward to LOG_CHANNEL if configured
+        if LOG_CHANNEL:
+            try:
+                forwarded_msg = await message.forward(LOG_CHANNEL)
+                message_id = forwarded_msg.id
+            except Exception as e:
+                logger.error(f"Failed to forward to log channel: {e}")
+                await message.reply_text("❌ Failed to process the file. Please try again.")
+                return
+        else:
+            logger.warning("LOG_CHANNEL is not configured, skipping file forwarding.")
+            # If LOG_CHANNEL is not set, we can\'t get message_id from forwarded_msg
+            # For now, we\'ll use the original message_id, but this means the stream won\'t work
+            # if the file is not accessible directly by the bot without forwarding.
+            # This is a limitation if LOG_CHANNEL is truly optional for streaming.
+            # The prompt implies LOG_CHANNEL is where the bot accesses files from.
+            # So, if LOG_CHANNEL is not set, streaming won\'t work as intended.
+            # For now, I\'ll make it so it fails gracefully.
+            await message.reply_text("❌ LOG_CHANNEL is not configured. Video streaming will not work.")
+            return
+        
+        # Generate secure stream link
+        secure_hash = generate_secure_hash(message_id, file_name)
+        stream_url = f"{BASE_URL}/watch/{message_id}/{file_name}?hash={secure_hash}"
+        
+        # Create inline keyboard
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("🖥️ Watch Online", url=stream_url)]
+        ])
+        
+        # Reply with file info and stream link
+        await message.reply_text(
+            f"✅ File uploaded successfully!\n\n"
+            f"📁 File: {file_name}\n"
+            f"🔗 Stream link generated!",
+            reply_markup=keyboard
+        )
+        
+    except Exception as e:
+        logger.error(f"Error handling video upload: {e}")
+        await message.reply_text("❌ An error occurred while processing your file.")
+
+async def main():
+    """Main function to start the bot"""
+    logger.info("Starting Telegram bot...")
+    await app.start()
+    logger.info("Bot started successfully!")
+    
+    # Import and start the web server
+    from streamer import start_web_server
+    await start_web_server()
+
+if __name__ == "__main__":
+    asyncio.run(main())
+

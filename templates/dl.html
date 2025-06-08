@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{VIDEO_TITLE}} - Video Player</title>
+    
+    <!-- Plyr CSS -->
+    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+    
+    <!-- Custom CSS -->
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            max-width: 900px;
+            width: 100%;
+            animation: fadeInUp 0.6s ease-out;
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: #2d3748;
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            word-break: break-word;
+        }
+        
+        .header p {
+            color: #718096;
+            font-size: 1rem;
+        }
+        
+        .video-container {
+            position: relative;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 20px;
+        }
+        
+        .plyr {
+            border-radius: 15px;
+        }
+        
+        .plyr__video-wrapper {
+            border-radius: 15px;
+        }
+        
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 300px;
+            background: #f7fafc;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e2e8f0;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error {
+            background: #fed7d7;
+            color: #c53030;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #4fd1c7 0%, #81e6d9 100%);
+        }
+        
+        .btn-secondary:hover {
+            box-shadow: 0 10px 20px rgba(79, 209, 199, 0.3);
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #718096;
+            font-size: 14px;
+        }
+        
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+            
+            .header h1 {
+                font-size: 1.5rem;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .btn {
+                width: 100%;
+                max-width: 250px;
+                justify-content: center;
+            }
+        }
+        
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {
+            .container {
+                background: rgba(26, 32, 44, 0.95);
+                color: #e2e8f0;
+            }
+            
+            .header h1 {
+                color: #f7fafc;
+            }
+            
+            .header p {
+                color: #a0aec0;
+            }
+            
+            .loading {
+                background: #2d3748;
+            }
+            
+            .footer {
+                color: #a0aec0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎬 {{VIDEO_TITLE}}</h1>
+            <p>High-quality video streaming powered by Telegram</p>
+        </div>
+        
+        <div id="loading" class="loading">
+            <div class="loading-spinner"></div>
+        </div>
+        
+        <div id="error" class="error" style="display: none;">
+            <h3>⚠️ Error Loading Video</h3>
+            <p>The video could not be loaded. Please try again later.</p>
+        </div>
+        
+        <div class="video-container" id="video-container" style="display: none;">
+            <video 
+                id="player" 
+                playsinline 
+                controls 
+                data-poster=""
+                preload="metadata"
+            >
+                <source src="{{VIDEO_URL}}" type="video/mp4" />
+                Your browser does not support the video tag.
+            </video>
+        </div>
+        
+        <div class="controls">
+            <button class="btn" onclick="downloadVideo()">
+                📥 Download Video
+            </button>
+            <button class="btn btn-secondary" onclick="shareVideo()">
+                🔗 Share Link
+            </button>
+            <button class="btn" onclick="fullscreen()">
+                🖥️ Fullscreen
+            </button>
+        </div>
+        
+        <div class="footer">
+            <p>Powered by Telegram Video Bot • Secure & Fast Streaming</p>
+        </div>
+    </div>
+    
+    <!-- Plyr JavaScript -->
+    <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
+    
+    <script>
+        let player;
+        
+        // Initialize video player
+        function initPlayer() {
+            const video = document.querySelector('#player');
+            const loading = document.querySelector('#loading');
+            const error = document.querySelector('#error');
+            const container = document.querySelector('#video-container');
+            
+            // Initialize Plyr
+            player = new Plyr(video, {
+                controls: [
+                    'play-large',
+                    'play',
+                    'progress',
+                    'current-time',
+                    'duration',
+                    'mute',
+                    'volume',
+                    'settings',
+                    'fullscreen'
+                ],
+                settings: ['quality', 'speed'],
+                quality: {
+                    default: 720,
+                    options: [1080, 720, 480, 360]
+                },
+                speed: {
+                    selected: 1,
+                    options: [0.5, 0.75, 1, 1.25, 1.5, 2]
+                },
+                tooltips: {
+                    controls: true,
+                    seek: true
+                },
+                keyboard: {
+                    focused: true,
+                    global: true
+                }
+            });
+            
+            // Handle video load events
+            video.addEventListener('loadstart', () => {
+                loading.style.display = 'flex';
+                error.style.display = 'none';
+                container.style.display = 'none';
+            });
+            
+            video.addEventListener('canplay', () => {
+                loading.style.display = 'none';
+                container.style.display = 'block';
+            });
+            
+            video.addEventListener('error', () => {
+                loading.style.display = 'none';
+                error.style.display = 'block';
+                container.style.display = 'none';
+            });
+            
+            // Auto-play on mobile with user interaction
+            player.on('ready', () => {
+                // Try to autoplay (will only work if user has interacted)
+                if (window.innerWidth > 768) {
+                    player.play().catch(() => {
+                        // Autoplay failed, which is expected
+                    });
+                }
+            });
+        }
+        
+        // Download video function
+        function downloadVideo() {
+            const link = document.createElement('a');
+            link.href = '{{VIDEO_URL}}';
+            link.download = '{{VIDEO_TITLE}}';
+            link.target = '_blank';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        
+        // Share video function
+        function shareVideo() {
+            if (navigator.share) {
+                navigator.share({
+                    title: '{{VIDEO_TITLE}}',
+                    text: 'Check out this video!',
+                    url: window.location.href
+                });
+            } else {
+                // Fallback: copy to clipboard
+                navigator.clipboard.writeText(window.location.href).then(() => {
+                    alert('Link copied to clipboard!');
+                }).catch(() => {
+                    // Fallback for older browsers
+                    const textArea = document.createElement('textarea');
+                    textArea.value = window.location.href;
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    alert('Link copied to clipboard!');
+                });
+            }
+        }
+        
+        // Fullscreen function
+        function fullscreen() {
+            if (player) {
+                player.fullscreen.enter();
+            }
+        }
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', initPlayer);
+        
+        // Handle page visibility for better performance
+        document.addEventListener('visibilitychange', () => {
+            if (player) {
+                if (document.hidden) {
+                    player.pause();
+                }
+            }
+        });
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (!player) return;
+            
+            switch(e.code) {
+                case 'Space':
+                    e.preventDefault();
+                    player.togglePlay();
+                    break;
+                case 'KeyF':
+                    e.preventDefault();
+                    player.fullscreen.toggle();
+                    break;
+                case 'KeyM':
+                    e.preventDefault();
+                    player.muted = !player.muted;
+                    break;
+            }
+        });
+    </script>
+</body>
+</html>
+
