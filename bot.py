@@ -19,7 +19,19 @@ logger = logging.getLogger(__name__)
 API_ID = os.getenv("API_ID")
 API_HASH = os.getenv("API_HASH")
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-LOG_CHANNEL = int(os.getenv("LOG_CHANNEL"))
+
+# Safely get LOG_CHANNEL
+log_channel_str = os.getenv("LOG_CHANNEL")
+if log_channel_str:
+    try:
+        LOG_CHANNEL = int(log_channel_str)
+    except ValueError:
+        logger.critical("LOG_CHANNEL environment variable is not a valid integer. Please check your .env or Koyeb settings.")
+        LOG_CHANNEL = None
+else:
+    logger.critical("LOG_CHANNEL environment variable is not set. New user logging will be disabled.")
+    LOG_CHANNEL = None
+
 BASE_URL = os.getenv("BASE_URL", "https://your-koyeb-app.koyeb.app")
 MONGO_URI = os.getenv("MONGO_URI")
 
@@ -54,22 +66,25 @@ async def start_command(client: Client, message: Message):
         }
         await users_collection.insert_one(user_data)
         
-        # Log new user to LOG_CHANNEL
-        try:
-            await client.send_message(
-                LOG_CHANNEL,
-                f"🆕 New User Joined!\n\n"
-                f"👤 Name: {first_name}\n"
-                f"🆔 ID: {user_id}"
-            )
-        except Exception as e:
-            logger.error(f"Failed to log new user to channel: {e}")
+        # Log new user to LOG_CHANNEL if configured
+        if LOG_CHANNEL:
+            try:
+                await client.send_message(
+                    LOG_CHANNEL,
+                    f"🆕 New User Joined!\n\n"
+                    f"👤 Name: {first_name}\n"
+                    f"🆔 ID: {user_id}"
+                )
+            except Exception as e:
+                logger.error(f"Failed to log new user to channel: {e}")
+        else:
+            logger.warning("LOG_CHANNEL is not configured, skipping new user logging.")
     
     # Send greeting message
     await message.reply_text(
         f"👋 Hello {first_name}!\n\n"
         f"Welcome to the Video Streaming Bot! 🎬\n\n"
-        f"📤 Send me a video file and I'll create a streaming link for you!"
+        f"📤 Send me a video file and I\'ll create a streaming link for you!"
     )
 
 @app.on_message(filters.video | filters.document)
@@ -86,13 +101,25 @@ async def handle_video_upload(client: Client, message: Message):
         else:
             return
         
-        # Forward to LOG_CHANNEL
-        try:
-            forwarded_msg = await message.forward(LOG_CHANNEL)
-            message_id = forwarded_msg.id
-        except Exception as e:
-            logger.error(f"Failed to forward to log channel: {e}")
-            await message.reply_text("❌ Failed to process the file. Please try again.")
+        # Forward to LOG_CHANNEL if configured
+        if LOG_CHANNEL:
+            try:
+                forwarded_msg = await message.forward(LOG_CHANNEL)
+                message_id = forwarded_msg.id
+            except Exception as e:
+                logger.error(f"Failed to forward to log channel: {e}")
+                await message.reply_text("❌ Failed to process the file. Please try again.")
+                return
+        else:
+            logger.warning("LOG_CHANNEL is not configured, skipping file forwarding.")
+            # If LOG_CHANNEL is not set, we can't get message_id from forwarded_msg
+            # For now, we'll use the original message_id, but this means the stream won't work
+            # if the file is not accessible directly by the bot without forwarding.
+            # This is a limitation if LOG_CHANNEL is truly optional for streaming.
+            # The prompt implies LOG_CHANNEL is where the bot accesses files from.
+            # So, if LOG_CHANNEL is not set, streaming won't work as intended.
+            # For now, I'll make it so it fails gracefully.
+            await message.reply_text("❌ LOG_CHANNEL is not configured. Video streaming will not work.")
             return
         
         # Generate secure stream link
